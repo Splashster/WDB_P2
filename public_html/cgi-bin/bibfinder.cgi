@@ -24,7 +24,8 @@ Type: <select style="margin-left:16.8%; width:32.7%;">
 <label for="abstract_con" style="margin-right:6%;">
 <input id="abs_con" type="checkbox"> Abstract contains...
 </label>
-Content: <input name="abstract_content" style="margin-left:12%;" type="text"><br> 
+Content: <input name="abstract_content" style="margin-left:12%;" type="text"><br><br>
+<input type="submit" value="Submit" style="margin-left:40%;"> 
 </fieldset>
 </form>
 </body>
