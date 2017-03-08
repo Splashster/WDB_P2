@@ -1,0 +1,5 @@
+'''
+Get all publication types
+'''
+for $x in distinct-values(doc("medsamp2012")//PublicationTypeList/PublicationType)
+  return concat(data($x),';')
