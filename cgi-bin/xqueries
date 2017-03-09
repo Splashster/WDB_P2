@@ -1,0 +1,20 @@
+'''
+Get all publication types
+'''
+for $x in distinct-values(doc("medsamp2012")//PublicationTypeList/PublicationType)
+  return concat(data($x),';')
+
+Get based on title contents
+MedlineCitationSet//MedlineCitation//Article[contains(ArticleTitle,"Transcription regulation of the nir")]/ArticleTitle|MedlineCitationSet//MedlineCitation//Article[contains(ArticleTitle,"Transcription regulation of the nir")]//AbstractText|MedlineCitationSet//MedlineCitation//Article[contains(ArticleTitle,"Transcription regulation of the nir")]/AuthorList//Author|MedlineCitationSet//MedlineCitation//Article[contains(ArticleTitle,"Transcription regulation of the nir")]/PublicationTypeList//PublicationType
+
+Get based on abstract contents
+MedlineCitationSet//MedlineCitation//Article[contains(Abstract, "At 3 months")]/ArticleTitle
+
+Get based on type
+MedlineCitationSet//MedlineCitation//Article[PublicationTypeList="Journal Article"]/ArticleTitle
+
+Get based on name
+MedlineCitationSet//MedlineCitation//Article[AuthorList/Author[LastName="Lee" and ForeName="W C"]]/ArticleTitle
+
+Get based on name and article tile
+MedlineCitationSet//MedlineCitation//Article[AuthorList/Author[LastName="Lee" and ForeName="W C"] and contains(ArticleTitle,"Evidence")]/ArticleTitle

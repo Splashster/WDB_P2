@@ -45,29 +45,30 @@ for i in sorted(publication_type_list):
 print """ Cotent-type:text/html\r\n\r\n
 <html>
 <body>
-<form>
+<form action='http://localhost/~coursework/cgi-bin/bibfinder2.py' method='post'>
 <fieldset style="width:30%; margin-left:35%;">
 <label for="author_check" style="margin-right:10%;">
-<input id="auth_search" type="checkbox"> Search by Author
+<input name="auth_search" type="checkbox"> Search by Author
 </label>
 Author's name: <input name="authorname" style="margin-left:2%;" type="text"><br> 
 <label for="title_con" style="margin-right:12%;">
-<input id="title_con" type="checkbox"> Title contains...
+<input name="title_con" type="checkbox"> Title contains...
 </label>
 Content: <input name="title_content" style="margin-left:12.2%;" type="text"><br> 
 <label for="search_type" style="margin-right:13.5%;">
-<input id="type_search" type="checkbox"> Search by type
+<input name="type_search" type="checkbox"> Search by type
 </label>
-Type: <select style="margin-left:16.8%; width:32.7%;">
-<option>Select Type</option>
+Type: <select name="searchtype" style="margin-left:16.8%; width:32.7%;">
+<option selected>Select Type</option>
 {0}
 </select>
 <br> 
 <label for="abstract_con" style="margin-right:6%;">
-<input id="abs_con" type="checkbox"> Abstract contains...
+<input name="abs_con" type="checkbox"> Abstract contains...
 </label>
 Content: <input name="abstract_content" style="margin-left:12%;" type="text"><br><br>
-<input type="submit" value="Submit" style="margin-left:40%;"> 
+<input type="submit" value="Submit" style="margin-left:40%;"><br><br> 
+<textarea class="scrollabletextbox" name="results" style="width:100%; height:150px; resize:none;" readonly></textarea>
 </fieldset>
 </form>
 </body>
