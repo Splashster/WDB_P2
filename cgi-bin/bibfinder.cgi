@@ -5,29 +5,42 @@ import requests
 publication_type_mapping = {'0': 'Journal Article', '1': 'Book', '3': 'In a conference proceedings', '5': 'In a collection (part of a book but has its own title)', '10': 'Tech Report', '13': 'Unpublished', '16': 'Miscellaneous', '47': 'In a conference proceedings'}
 publication_type_list = []
 
-basex_response = requests.get('http://admin:admin@localhost:8984/rest/medsamp2012?query=distinct-values(data(//MedlineCitationSet//MedlineCitation//Article//PublicationTypeList//PublicationType))')
-
+'''
+Get all publication types from existdb document.
+'''
 existdb_response = requests.get('http://localhost:8080/exist/rest/db/acm-turing-awards/acm-turing-awards.xml?_query=distinct-values(//XML/RECORDS/RECORD/REFERENCE_TYPE)&_howmany=1000')
 
-first_pass = existdb_response.text.replace('<exist:value exist:type="xs:untypedAtomic">', "").replace('</exist:value>',"").split(">")
-second_pass = first_pass[1].split("<")
-third_pass = second_pass[0].strip().replace("\n", ";").replace(" ", "").split(";")
 
-#print third_pass[0]
+'''
+Removing exist result tags that existdb sends back in response.
+'''
+existdb_pub_types = existdb_response.text.replace('<exist:value exist:type="xs:untypedAtomic">', "").replace('</exist:value>',"").split(">")
+existdb_pub_types  = existdb_pub_types[1].split("<")
+existdb_pub_types = existdb_pub_types[0].strip().replace("\n", ";").replace(" ", "").split(";")
 
-for types in third_pass:
-	publication_type_list.append(publication_type_mapping[types])
 
-for pub_type in basex_response.text.split("\n"):
-	publication_type_list.append(str(pub_type))
+for existdb_pub_type in existdb_pub_types:
+	publication_type_list.append(publication_type_mapping[existdb_pub_type])
+
+
+'''
+Get all publication types from basex document.
+'''
+basex_response = requests.get('http://admin:admin@localhost:8984/rest/medsamp2012?query=distinct-values(data(//MedlineCitationSet//MedlineCitation//Article//PublicationTypeList//PublicationType))')
+
+for basex_pub_type in basex_response.text.split("\n"):
+	publication_type_list.append(str(basex_pub_type))
 
 publication_type_list = list(set(publication_type_list))
 
+'''
+Create dropdown elements for each publication types.
+All Duplicate publication types have been removed.
+'''
 options = " "
 for i in sorted(publication_type_list):
 	options += """<option value="%s">%s</option>\n"""%(i,i)
 	
-#print options
 
 print """ Cotent-type:text/html\r\n\r\n
 <html>
