@@ -4,6 +4,7 @@ import cgi
 import cgitb; cgitb.enable()
 import requests
 import xml.etree.ElementTree as ET
+from lxml import etree
 
 form_items = cgi.FieldStorage()
 auth_checkbox = form_items.getvalue('auth_search')
@@ -15,9 +16,13 @@ title_content = form_items.getvalue('title_content')
 search_type = form_items.getvalue('searchtype')
 abstract_content = form_items.getvalue('abstract_content')
 responses = []
-abstract_checkbox = "on"
-abstract_content = "Duodenal"
+#abstract_checkbox = "on"
+#abstract_content = "Photolytic"
+type_checkbox = "on"
+search_type = "Journal Article"
 main_list = []
+msg = ""
+
 
 def parseResponse(response, response_type):
 	auth_list = []
@@ -25,36 +30,62 @@ def parseResponse(response, response_type):
 	title_list = []
 	abs_list = []
 	parts_list = []
+	count = 0
+	item_count = 1 
+	parser = etree.XMLParser(recover=True)
 
 	if response_type == 'baseX':
 		responses = response.text.split("<ArticleTitle>")
+		#print tree
+		#print etree.tostring(tree)
 		#print responses
 		for items in responses:
+			tree = "<root>" + "<ArticleTitle>" + items + "</root>"
+			#print tree
+			tree = etree.fromstring(tree,parser)
+			root = ET.fromstring(etree.tostring(tree))
 			if items != "":
-				first_slice = items.split("</ArticleTitle>")
-				title = first_slice[0]
+				if "</ArticleTitle>" in items:
+					first_slice = items.split("</ArticleTitle>")
+					title = first_slice[0]
+				else:
+					title = "NONE"
 				#print title
-				second_slice = first_slice[1].split("<AuthorList")	
-				tree = ET.fromstring(second_slice[0])
-				#abstracts = second_slice[0].replace("<AbstractText>","").replace("\n","").split("</AbstractText>")
-				for child in tree:
-					abstract = child.text
-					abs_list.append(abstract)
+				if "<Abstract>" in items:
+					#second_slice = first_slice[1].split("<AuthorList")	
+					#tree = ET.fromstring(second_slice[0])
+									#print root[1][0].text
+					for child in root.find('Abstract'):
+						abstract = child.text
+						abs_list.append(abstract)
+						#printi abstract
+					#print root.tag
+				else:
+					abs_list.append("NONE")
 				#print abs_list
 				#print str(abstracts)
-				third_slice =  second_slice[1].split("<PublicationTypeList>")
-				third_slice[0] =  "<AuthorList" + third_slice[0]
-				tree = ET.fromstring(third_slice[0])
-				for child in tree:
-					fullname = child.find("./ForeName").text + " " + child.find("./LastName").text
-					auth_list.append(fullname)
-				#print auth_list
-				
-				fourth_slice = "<PublicationTypeList>" + third_slice[1]
-				tree = ET.fromstring(fourth_slice)
-				for child in tree:
-					types_list.append(child.text)
-				#print types_list
+				#third_slice =  second_slice[1].split("<PublicationTypeList>")
+				#third_slice[0] =  "<AuthorList" + third_slice[0]
+				#tree = ET.fromstring(third_slice[0])
+				if "<AuthorList" in items:
+					for child in root.find("AuthorList"):
+						try:	
+							fullname = child.find("./ForeName").text + " " +  child.find("./LastName").text
+							auth_list.append(fullname)
+							#print fullname
+						except:
+							pass
+				#	print auth_list
+				else:
+					auth_list.append("NONE")
+				if "<PublicationTypeList" in items:
+				#fourth_slice = "<PublicationTypeList>" + third_slice[1]
+				#tree = ET.fromstring(fourth_slice)
+					for child in root.find("PublicationTypeList"):
+						types_list.append(child.text)
+					#print types_list
+				else:
+					types_list.append("NONE")
 				parts_list.append(types_list)
 				parts_list.append(auth_list)
 				parts_list.append(str(title))
@@ -66,39 +97,38 @@ def parseResponse(response, response_type):
 				types_list = []
 				abs_list = []
 				parts_list = []
-		'''
-		if element == 'author':
-			authors = response.text.split("\n")
-			count = 0 
-			for item in reversed(authors):
-				if count == 1:
-					fullname += " " + str(item)
-					auth_list.append(fullname)
-					fullname = ""
-					count = 0
-				else:
-					fullname = str(item)
-					count = 1
-		elif element == 'title':
-			titles = response.text.split("\n")
-			for item in titles:
-				title_list.append(str(item))
-		elif element == 'type':
-			types = response.text.split("\n")
-			for item in types:
-				type_list.append(str(item))
-		elif element == 'abstract':
-			abstracts = response.text.split("\n")
-			for item in abstracts:
-				abs_list.add(str(item))			
-		'''
-
+				message = ""
+				for item in main_list:
+					for parts in item:
+						if count == 0:
+							for i in parts:
+								message += 'ReferenceType: {0}<br>'.format(i.encode('utf-8'))
+							count = 1
+						elif count == 1:
+							for i in parts:
+								message += 'Authors: {0}<br>'.format(i.encode('utf-8'))
+							count = 2
+						elif count == 2:
+							message += 'Title: {0}<br>'.format(parts.encode('utf-8'))
+							count = 3
+						elif count == 3:
+							for i in parts:
+								message += 'Abstract: {0}<br>'.format(i.encode('utf-8'))
+							count = 0
+					if len(main_list) > 1 and item_count < len(main_list):
+						message+='*********************************************<br>'
+						item_count +=1
+	
+				global msg 
+				msg = message
 def sendQuery(query, response_type):
 	#print query
 	response = requests.get(query)
-	parseResponse(response, response_type)
-
-
+	if response.text != "":
+		parseResponse(response, response_type)
+	else:
+		global msg 
+		msg = "NONE"
 def generateBaseXQuery():
 	
 	xpath = 'MedlineCitationSet//MedlineCitation//Article['
@@ -130,13 +160,13 @@ def generateBaseXQuery():
 			xpath += "contains(ArticleTitle,'{0}')".format(title_content)
 	if type_checkbox:
 		if oneChecked:
-			xpath += " and PublicationTypeList='{0}'".format(search_type)
+			xpath += " and PublicationTypeList[PublicationType='{0}']".format(search_type)
 		else:
 			oneChecked = True
-			xpath += "PublicationTypeList='{0}'".format(search_type)
+			xpath += "PublicationTypeList[PublicationType='{0}']".format(search_type)
 	if abstract_checkbox:
 		if oneChecked:
-			xpath += "contains(Abstract,'{0}')".format(abstract_content)
+			xpath += " and contains(Abstract,'{0}')".format(abstract_content)
 		else:
 			oneChecked = True
 			xpath += "contains(Abstract,'{0}')".format(abstract_content)
@@ -146,38 +176,17 @@ def generateBaseXQuery():
 		xpath += '/PublicationTypeList|' + xpath + '/AuthorList|' + xpath + '/ArticleTitle|' + xpath + '/Abstract'  	
 		query = 'http://admin:admin@localhost:8984/rest/medsamp2012?query='+xpath+''
 		sendQuery(query, 'baseX')
-	
+	else:
+		global msg 
+		msg = "NONE"		
 generateBaseXQuery()
-count = 0
-item_count = 1 
-msg = ""
-
-for item in main_list:
-	for parts in item:
-		if count == 0:
-			for i in parts:
-				msg += 'ReferenceType: {0}<br>'.format(i)
-			count = 1
-		elif count == 1:
-			for i in parts:
-				msg += 'Authors: {0}<br>'.format(i)
-			count = 2
-		elif count == 2:
-			msg += 'Title: {0}<br>'.format(parts)
-			count = 3
-		elif count == 3:
-			for i in parts:
-				msg += 'Abstract: {0}<br>'.format(i)
-			count = 0
-	if len(main_list) > 1 and item_count < len(main_list):
-		msg+='*********************************************<br>'
-		item_count +=1
-
+#print msg
 #print main_list
 print """Content-type:text/html\r\n\r\n
 <html>
 <body>
-<script>console.log("{0}");</script>
+<script>console.log({0});</script>
 </body>
 </html>
 """.format(msg)
+#print msg
