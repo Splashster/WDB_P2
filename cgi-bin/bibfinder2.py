@@ -3,7 +3,7 @@
 import cgi
 import cgitb; cgitb.enable()
 import requests
-
+import xml.etree.ElementTree as ET
 
 form_items = cgi.FieldStorage()
 auth_checkbox = form_items.getvalue('auth_search')
@@ -18,13 +18,34 @@ auth_list = []
 types_list = []
 title_list = []
 abs_list = []
-author_xpath = ""
-#auth_checkbox = "on"
-#author = "Jih Ru Hwu"
+responses = []
+abstract_checkbox = "on"
+abstract_content = "Duodenal"
 
 
-def parseResponse(response, response_type, element):
+def parseResponse(response, response_type):
 	if response_type == 'baseX':
+		responses = response.text.split("<ArticleTitle>")
+		#print responses
+		for items in responses:
+			if items != "":
+				first_slice = items.split("</ArticleTitle>")
+				title = first_slice[0]
+				print title
+				second_slice = first_slice[1].replace("<Abstract>","").split("</Abstract>")
+				abstracts = second_slice[0].replace("<AbstractText>","").replace("\n","").split("</AbstractText>")
+				print str(abstracts)
+				third_slice = second_slice[1].split("<PublicationType>")
+				tree = ET.fromstring(third_slice[0])
+				for child in tree:
+					fullname = child.find("./ForeName").text + " " + child.find("./LastName").text
+					print fullname
+				#names = third_slice[0].split("\n")
+				
+				#print names[1]
+				print "*****************************************************"
+					
+		'''
 		if element == 'author':
 			authors = response.text.split("\n")
 			count = 0 
@@ -49,21 +70,19 @@ def parseResponse(response, response_type, element):
 			abstracts = response.text.split("\n")
 			for item in abstracts:
 				abs_list.add(str(item))			
+		'''
 
-
-def sendQuery(query, element, response_type):
+def sendQuery(query, response_type):
+	#print query
 	response = requests.get(query)
-	parseResponse(response, response_type, element)
+	parseResponse(response, response_type)
 
 
 def generateBaseXQuery():
 	
-	author_xpath = 'http://admin:admin@localhost:8984/rest/medsamp2012?query=data(MedlineCitationSet//MedlineCitation//Article['
-	title_xpath = 'http://admin:admin@localhost:8984/rest/medsamp2012?query=data(MedlineCitationSet//MedlineCitation//Article['
-	type_xpath = 'http://admin:admin@localhost:8984/rest/medsamp2012?query=data(MedlineCitationSet//MedlineCitation//Article['
-	abstract_xpath = 'http://admin:admin@localhost:8984/rest/medsamp2012?query=data(MedlineCitationSet//MedlineCitation//Article['
-		
-
+	xpath = 'MedlineCitationSet//MedlineCitation//Article['
+	
+	multiple_items = False
 	if auth_checkbox:
 		try:
 			fullname = author.split()
@@ -80,19 +99,32 @@ def generateBaseXQuery():
 			forename = ""
 			lastname = ""
 
-		author_xpath += "AuthorList/Author[LastName= '{0}' and ForeName='{1}']]/AuthorList/Author/*[position()<3])".format(lastname,forename)
-		sendQuery(author_xpath, 'author', 'baseX')
+		multiple_items = True
+		xpath += "AuthorList/Author[LastName= '{0}' and ForeName='{1}']".format(lastname,forename)
 	if title_checkbox:
-		title_xpath += "contains(ArticleTitle,'{0}')])".format(title_content)
-		sendQuery(title_xpath, 'title', 'baseX')
+		if multiple_items:
+			xpath += " and contains(ArticleTitle,'{0}')".format(title_content)
+ 		else:
+			multiple_items = True
+			xpath += "contains(ArticleTitle,'{0}')".format(title_content)
 	if type_checkbox:
-		type_xpath += "PublicationTypeList='{0}'])".format(search_type)
-		sendQuery(type_xpath, 'type', 'baseX')
+		if multiple_items:
+			xpath += " and PublicationTypeList='{0}'".format(search_type)
+		else:
+			multiple_items = True
+			xpath += "PublicationTypeList='{0}'".format(search_type)
 	if abstract_checkbox:
-		abstract_xpath += "contains(Abstract,'{0}')])".format(abstract_content)
-		sendQuery(abstract_xpath, 'abstract', 'baseX')
+		if multiple_items:
+			xpath += "contains(Abstract,'{0}')".format(abstract_content)
+		else:
+			multiple_items = True
+			xpath += "contains(Abstract,'{0}')".format(abstract_content)
 
-
+	xpath += "]"
+	xpath += '/PublicationTypeList/PublicationType|' + xpath + '/AuthorList|' + xpath + '/ArticleTitle|' + xpath + '/Abstract'  	
+	query = 'http://admin:admin@localhost:8984/rest/medsamp2012?query='+xpath+''
+	sendQuery(query, 'baseX')
+	
 generateBaseXQuery()
 print """Content-type:text/html\r\n\r\n
 <html>
@@ -100,4 +132,4 @@ print """Content-type:text/html\r\n\r\n
 <script>console.log("{0}");</script>
 </body>
 </html>
-""".format(auth_list)
+""".format('s')
