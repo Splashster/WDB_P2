@@ -2,7 +2,7 @@
 
 import cgi
 import cgitb; cgitb.enable()
-#import requests
+import requests
 
 
 form_items = cgi.FieldStorage()
@@ -14,14 +14,55 @@ author = form_items.getvalue('authorname')
 title_content = form_items.getvalue('title_content')
 search_type = form_items.getvalue('searchtype')
 abstract_content = form_items.getvalue('abstract_content')
-multiple_items = False
+auth_list = []
+types_list = []
+title_list = []
+abs_list = []
+author_xpath = ""
 #auth_checkbox = "on"
-#author = "Frank G G"
+#author = "Jih Ru Hwu"
+
+
+def parseResponse(response, response_type, element):
+	if response_type == 'baseX':
+		if element == 'author':
+			authors = response.text.split("\n")
+			count = 0 
+			for item in reversed(authors):
+				if count == 1:
+					fullname += " " + str(item)
+					auth_list.append(fullname)
+					fullname = ""
+					count = 0
+				else:
+					fullname = str(item)
+					count = 1
+		elif element == 'title':
+			titles = response.text.split("\n")
+			for item in titles:
+				title_list.append(str(item))
+		elif element == 'type':
+			types = response.text.split("\n")
+			for item in types:
+				type_list.append(str(item))
+		elif element == 'abstract':
+			abstracts = response.text.split("\n")
+			for item in abstracts:
+				abs_list.add(str(item))			
+
+
+def sendQuery(query, element, response_type):
+	response = requests.get(query)
+	parseResponse(response, response_type, element)
+
 
 def generateBaseXQuery():
 	
-	xpath = 'MedlineCitationSet//MedlineCitation//Article['
-	multiple_items = False
+	author_xpath = 'http://admin:admin@localhost:8984/rest/medsamp2012?query=data(MedlineCitationSet//MedlineCitation//Article['
+	title_xpath = 'http://admin:admin@localhost:8984/rest/medsamp2012?query=data(MedlineCitationSet//MedlineCitation//Article['
+	type_xpath = 'http://admin:admin@localhost:8984/rest/medsamp2012?query=data(MedlineCitationSet//MedlineCitation//Article['
+	abstract_xpath = 'http://admin:admin@localhost:8984/rest/medsamp2012?query=data(MedlineCitationSet//MedlineCitation//Article['
+		
 
 	if auth_checkbox:
 		try:
@@ -39,38 +80,24 @@ def generateBaseXQuery():
 			forename = ""
 			lastname = ""
 
-		xpath += "AuthorList/Author[LastName= '{0}' and ForeName='{1}']".format(lastname,forename) 
-		multiple_items = True
+		author_xpath += "AuthorList/Author[LastName= '{0}' and ForeName='{1}']]/AuthorList/Author/*[position()<3])".format(lastname,forename)
+		sendQuery(author_xpath, 'author', 'baseX')
 	if title_checkbox:
-		if multiple_items:
-			xpath += " and contains(ArticleTitle,'{0}')".format(title_content)
-		else:
-			multiple_items = True
-			xpath += "contains(ArticleTitle,'{0}')".format(title_content)
+		title_xpath += "contains(ArticleTitle,'{0}')])".format(title_content)
+		sendQuery(title_xpath, 'title', 'baseX')
 	if type_checkbox:
-		if multiple_items:
-			xpath += " and PublicationTypeList='{0}'".format(search_type)
-		else:
-			multiple_items = True
-			xpath += "PublicationTypeList='{0}'".format(search_type)
+		type_xpath += "PublicationTypeList='{0}'])".format(search_type)
+		sendQuery(type_xpath, 'type', 'baseX')
 	if abstract_checkbox:
-		if multiple_items:
-			xpath += " and contains(Abstract,'{0}')".format(abstract_content)
-		else:
-			multiple_items = True
-			xpath += "contains(Abstract,'{0}')".format(abstract_content)
+		abstract_xpath += "contains(Abstract,'{0}')])".format(abstract_content)
+		sendQuery(abstract_xpath, 'abstract', 'baseX')
 
-	xpath += ']'
-	xpath += '/PublicationTypeList/PublicationType | ' + xpath + '/AuthorList/Author | ' + xpath + '/ArticleTitle | ' + xpath + '/Abstract/AbstractText'
 
-	query = 'htttp://admin:admin@localhost:8984/rest/medsamp2012?query=distinct-values(data('+xpath+'))'
-	return query
-
-art = generateBaseXQuery()
+generateBaseXQuery()
 print """Content-type:text/html\r\n\r\n
 <html>
 <body>
 <script>console.log("{0}");</script>
 </body>
 </html>
-""".format(art)
+""".format(auth_list)
