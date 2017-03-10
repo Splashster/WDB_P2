@@ -14,16 +14,17 @@ author = form_items.getvalue('authorname')
 title_content = form_items.getvalue('title_content')
 search_type = form_items.getvalue('searchtype')
 abstract_content = form_items.getvalue('abstract_content')
-auth_list = []
-types_list = []
-title_list = []
-abs_list = []
 responses = []
 abstract_checkbox = "on"
 abstract_content = "Duodenal"
 
 
 def parseResponse(response, response_type):
+	auth_list = []
+	types_list = []
+	title_list = []
+	abs_list = []
+
 	if response_type == 'baseX':
 		responses = response.text.split("<ArticleTitle>")
 		#print responses
@@ -32,19 +33,31 @@ def parseResponse(response, response_type):
 				first_slice = items.split("</ArticleTitle>")
 				title = first_slice[0]
 				print title
-				second_slice = first_slice[1].replace("<Abstract>","").split("</Abstract>")
-				abstracts = second_slice[0].replace("<AbstractText>","").replace("\n","").split("</AbstractText>")
-				print str(abstracts)
-				third_slice = second_slice[1].split("<PublicationType>")
+				second_slice = first_slice[1].split("<AuthorList")	
+				tree = ET.fromstring(second_slice[0])
+				#abstracts = second_slice[0].replace("<AbstractText>","").replace("\n","").split("</AbstractText>")
+				for child in tree:
+					abstract = child.text
+					abs_list.append(abstract)
+				print abs_list
+				#print str(abstracts)
+				third_slice =  second_slice[1].split("<PublicationTypeList>")
+				third_slice[0] =  "<AuthorList" + third_slice[0]
 				tree = ET.fromstring(third_slice[0])
 				for child in tree:
 					fullname = child.find("./ForeName").text + " " + child.find("./LastName").text
-					print fullname
-				#names = third_slice[0].split("\n")
+					auth_list.append(fullname)
+				print auth_list
 				
-				#print names[1]
+				fourth_slice = "<PublicationTypeList>" + third_slice[1]
+				tree = ET.fromstring(fourth_slice)
+				for child in tree:
+					types_list.append(child.text)
+				print types_list
 				print "*****************************************************"
-					
+				auth_list = []
+				types_list = []
+				abs_list = []
 		'''
 		if element == 'author':
 			authors = response.text.split("\n")
@@ -121,7 +134,7 @@ def generateBaseXQuery():
 			xpath += "contains(Abstract,'{0}')".format(abstract_content)
 
 	xpath += "]"
-	xpath += '/PublicationTypeList/PublicationType|' + xpath + '/AuthorList|' + xpath + '/ArticleTitle|' + xpath + '/Abstract'  	
+	xpath += '/PublicationTypeList|' + xpath + '/AuthorList|' + xpath + '/ArticleTitle|' + xpath + '/Abstract'  	
 	query = 'http://admin:admin@localhost:8984/rest/medsamp2012?query='+xpath+''
 	sendQuery(query, 'baseX')
 	
